@@ -1,0 +1,48 @@
+{
+  "name": "@elizaos/plugin-rugcheck-x402",
+  "version": "1.0.0",
+  "description": "ElizaOS and Solana Agent Kit plugin for autonomous token risk analysis, honeypot detection, bundler sniping identification, and MEV telemetry gated by x402 micropayments",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run ../../tests/plugin-rugcheck-x402.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "elizaos",
+    "elizaos-plugin",
+    "solana-agent-kit",
+    "solana",
+    "x402",
+    "rugcheck",
+    "honeypot",
+    "mev",
+    "ai-agent"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@scure/base": "^1.2.4",
+    "@solana/web3.js": "^1.98.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

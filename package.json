@@ -1,0 +1,51 @@
+{
+  "name": "solana-agent-x402-intelligence",
+  "version": "1.0.0",
+  "description": "High-speed sub-cent Solana token risk, honeypot/bundler detection, and MEV intelligence API gated by x402 for AI agents, with client test runner and MCP server",
+  "main": "dist/server/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && tsc -p packages/plugin-rugcheck-x402/tsconfig.json",
+    "build:server": "tsc",
+    "build:plugin": "tsc -p packages/plugin-rugcheck-x402/tsconfig.json",
+    "start": "tsx src/server/index.ts",
+    "server": "tsx src/server/index.ts",
+    "client": "tsx src/client/agent-client.ts",
+    "mcp": "tsx src/mcp/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "solana",
+    "x402",
+    "ai-agents",
+    "mev",
+    "honeypot-detector",
+    "bundler-detection",
+    "mcp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "@scure/base": "^1.2.4",
+    "@solana/kit": "^8.5.0",
+    "@solana/web3.js": "^1.98.0",
+    "@x402/core": "^2.28.0",
+    "@x402/express": "^2.28.0",
+    "@x402/fetch": "^2.28.0",
+    "@x402/svm": "^2.28.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.9",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
