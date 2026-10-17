@@ -5,6 +5,13 @@ import { SolanaAgentClient } from "../src/client/agent-client.js";
 import { Keypair } from "@solana/web3.js";
 import { X402PaymentRequirement, X402PaymentSignature } from "../src/types/index.js";
 
+function parsePaymentRequirement(headerValue: string | null): X402PaymentRequirement {
+  if (!headerValue) throw new Error("Missing PAYMENT-REQUIRED header");
+  return headerValue.startsWith("{")
+    ? JSON.parse(headerValue)
+    : JSON.parse(Buffer.from(headerValue, "base64").toString("utf-8"));
+}
+
 describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
   let server: Server;
   let baseUrl: string;
@@ -54,7 +61,7 @@ describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
     const mint = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
     // 1. Get challenge
     const challengeRes = await fetch(`${baseUrl}/api/token/risk/${mint}`);
-    const requirement: X402PaymentRequirement = JSON.parse(challengeRes.headers.get("payment-required")!);
+    const requirement: X402PaymentRequirement = parsePaymentRequirement(challengeRes.headers.get("payment-required"));
 
     // 2. Craft invalid / forged signature
     const fakeKeypair = Keypair.generate();
@@ -118,7 +125,7 @@ describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
 
     // Step 1: Get challenge nonce
     const challengeRes = await fetch(`${baseUrl}/api/token/risk/${mint}`);
-    const requirement: X402PaymentRequirement = JSON.parse(challengeRes.headers.get("payment-required")!);
+    const requirement: X402PaymentRequirement = parsePaymentRequirement(challengeRes.headers.get("payment-required"));
 
     // Step 2: Sign valid payload
     const payment = await agent.signPaymentChallenge(requirement);
@@ -189,7 +196,7 @@ describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
   it("should reject payments with mismatched network specifications", async () => {
     const mint = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
     const challengeRes = await fetch(`${baseUrl}/api/token/risk/${mint}`);
-    const requirement: X402PaymentRequirement = JSON.parse(challengeRes.headers.get("payment-required")!);
+    const requirement: X402PaymentRequirement = parsePaymentRequirement(challengeRes.headers.get("payment-required"));
 
     const agent = new SolanaAgentClient({ baseUrl, debug: false });
     const payment = await agent.signPaymentChallenge(requirement);
@@ -210,7 +217,7 @@ describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
 
     // Obtain single challenge nonce
     const challengeRes = await fetch(`${baseUrl}/api/token/risk/${mint}`);
-    const requirement: X402PaymentRequirement = JSON.parse(challengeRes.headers.get("payment-required")!);
+    const requirement: X402PaymentRequirement = parsePaymentRequirement(challengeRes.headers.get("payment-required"));
     const payment = await agent.signPaymentChallenge(requirement);
     const paymentHeader = Buffer.from(JSON.stringify(payment)).toString("base64");
 
@@ -340,7 +347,7 @@ describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
     // Initial challenge with trailing slash
     const challengeRes = await fetch(`${baseUrl}/api/token/risk/${mint}/`);
     expect(challengeRes.status).toBe(402);
-    const reqSpec: X402PaymentRequirement = JSON.parse(challengeRes.headers.get("payment-required")!);
+    const reqSpec: X402PaymentRequirement = parsePaymentRequirement(challengeRes.headers.get("payment-required"));
 
     // Sign challenge
     const payment = await agent.signPaymentChallenge(reqSpec);

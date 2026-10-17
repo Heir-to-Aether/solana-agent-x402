@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Server } from "http";
 import { createApp } from "../src/server/index.js";
 import { getOpenApiSpec } from "../src/server/discovery.js";
-import { discoverOriginSchema, checkEndpointSchema } from "@agentcash/discovery";
+import { discoverOriginSchema, checkEndpointSchema, validatePaymentRequiredDetailed } from "@agentcash/discovery";
 
 describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
   let server: Server;
@@ -39,6 +39,7 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
     expect(spec.info["x-guidance"]).toContain("Autonomous AI agent guide");
     expect(spec.servers[0].url).toBe("https://solana-agent-x402.onrender.com");
     expect(spec["x-agentcash-guidance"].llmsTxtUrl).toBe("https://solana-agent-x402.onrender.com/llms.txt");
+    expect(spec["x-agentcash-provenance"].ownershipProofs).toContain("https://github.com/Heir-to-Aether/solana-agent-x402");
   });
 
   it("should define both x402 and siwx security schemes in components", () => {
@@ -170,24 +171,55 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
     expect(res.headers.get("x402-nonce")).toBeTruthy();
   });
 
-  it("should return base64 PAYMENT-REQUIRED header when probed with discovery accept header", async () => {
-    const res = await fetch(`${baseUrl}/api/token/full-audit`, {
+  it("should return base64 PAYMENT-REQUIRED header by default on paid endpoints without specialized headers", async () => {
+    // 1. POST full-audit with standard fetch (no discovery Accept or user-agent)
+    const postRes = await fetch(`${baseUrl}/api/token/full-audit`, {
       method: "POST",
-      headers: {
-        Accept: "application/json, text/plain;q=0.9, */*;q=0.8",
-      },
     });
 
-    expect(res.status).toBe(402);
-    const headerVal = res.headers.get("payment-required")!;
-    expect(headerVal).toBeTruthy();
+    expect(postRes.status).toBe(402);
+    const postHeader = postRes.headers.get("payment-required")!;
+    expect(postHeader).toBeTruthy();
+    expect(postHeader.startsWith("{")).toBe(false);
 
-    // Verify it is base64-encoded JSON with x402Version: 2
-    const decoded = Buffer.from(headerVal, "base64").toString("utf-8");
-    const parsed = JSON.parse(decoded);
-    expect(parsed.x402Version).toBe(2);
-    expect(parsed.accepts[0].amount).toBe("5000");
-    expect(parsed.resource.url).toContain("/api/token/full-audit");
+    const postDecoded = Buffer.from(postHeader, "base64").toString("utf-8");
+    const postParsed = JSON.parse(postDecoded);
+    expect(postParsed.x402Version).toBe(2);
+    expect(postParsed.accepts[0].amount).toBe("5000");
+    expect(postParsed.resource.url).toContain("/api/token/full-audit");
+
+    // 2. GET risk with standard fetch
+    const getRes = await fetch(`${baseUrl}/api/token/risk/7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`);
+    expect(getRes.status).toBe(402);
+    const getHeader = getRes.headers.get("payment-required")!;
+    expect(getHeader).toBeTruthy();
+    expect(getHeader.startsWith("{")).toBe(false);
+
+    const getDecoded = Buffer.from(getHeader, "base64").toString("utf-8");
+    const getParsed = JSON.parse(getDecoded);
+    expect(getParsed.x402Version).toBe(2);
+    expect(getParsed.accepts[0].amount).toBe("2000");
+  });
+
+  it("should satisfy validatePaymentRequiredDetailed with 0 issues on all 4 paid endpoint challenges", async () => {
+    const endpoints = [
+      { url: `${baseUrl}/api/token/risk/7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`, method: "GET" },
+      { url: `${baseUrl}/api/token/bundler/7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`, method: "GET" },
+      { url: `${baseUrl}/api/token/mev/7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`, method: "GET" },
+      { url: `${baseUrl}/api/token/full-audit`, method: "POST" },
+    ];
+
+    for (const ep of endpoints) {
+      const res = await fetch(ep.url, { method: ep.method });
+      expect(res.status).toBe(402);
+      const body = (await res.json()) as any;
+
+      const validation = validatePaymentRequiredDetailed(body);
+      expect(validation.valid, `Endpoint ${ep.url} failed validation: ${JSON.stringify(validation.issues)}`).toBe(true);
+      expect(validation.issues.length).toBe(0);
+      expect(validation.normalized?.version).toBe(2);
+      expect(validation.normalized?.accepts.length).toBeGreaterThan(0);
+    }
   });
 
   it("should be successfully discovered and validated by @agentcash/discovery without errors", async () => {
@@ -202,25 +234,25 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
     const freeEndpoints = result.endpoints.filter((e: any) => e.authMode === "unprotected");
     expect(freeEndpoints.length).toBe(5);
 
-    // Verify probe checks on paid endpoints find paymentOptions and schemas
-    const checkRisk = await checkEndpointSchema({
-      url: `${baseUrl}/api/token/risk/7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`,
-      probe: true,
-    });
-    expect(checkRisk.found).toBe(true);
-    const paidRiskAdv = checkRisk.advisories.find((a: any) => a.method === "GET" && a.authMode === "paid");
-    expect(paidRiskAdv).toBeDefined();
-    expect(paidRiskAdv.paymentOptions.length).toBeGreaterThan(0);
-    expect(paidRiskAdv.protocols).toContain("x402");
+    // Verify probe checks on ALL 4 paid endpoints find paymentOptions and schemas
+    const testMint = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
+    const checkEndpoints = [
+      { path: `/api/token/risk/${testMint}`, method: "GET" },
+      { path: `/api/token/bundler/${testMint}`, method: "GET" },
+      { path: `/api/token/mev/${testMint}`, method: "GET" },
+      { path: `/api/token/full-audit`, method: "POST" },
+    ];
 
-    const checkAudit = await checkEndpointSchema({
-      url: `${baseUrl}/api/token/full-audit`,
-      probe: true,
-    });
-    expect(checkAudit.found).toBe(true);
-    const paidAuditAdv = checkAudit.advisories.find((a: any) => a.method === "POST" && a.authMode === "paid");
-    expect(paidAuditAdv).toBeDefined();
-    expect(paidAuditAdv.paymentOptions.length).toBeGreaterThan(0);
-    expect(paidAuditAdv.protocols).toContain("x402");
+    for (const ep of checkEndpoints) {
+      const check = await checkEndpointSchema({
+        url: `${baseUrl}${ep.path}`,
+        probe: true,
+      });
+      expect(check.found).toBe(true);
+      const paidAdv = check.advisories.find((a: any) => a.method === ep.method && a.authMode === "paid");
+      expect(paidAdv, `Advisory for ${ep.method} ${ep.path} must exist`).toBeDefined();
+      expect(paidAdv.paymentOptions.length, `Payment options for ${ep.path} must exist`).toBeGreaterThan(0);
+      expect(paidAdv.protocols).toContain("x402");
+    }
   });
 });

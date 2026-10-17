@@ -56,7 +56,7 @@ export function createX402Middleware(
   const rawNetwork =
     options.network ||
     process.env.SOLANA_NETWORK ||
-    "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"; // Solana Devnet CAIP-2
+    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"; // Solana Mainnet CAIP-2 default
   const allowSimulatedDevnet = options.allowSimulatedDevnet ?? true;
 
   // Resolve network CAIP-2 identifier
@@ -215,18 +215,11 @@ export function createX402Middleware(
       res.status(402);
       res.setHeader("Content-Type", "application/json");
 
-      const acceptHeader = (req.header("accept") || "").toLowerCase();
-      const userAgent = (req.header("user-agent") || "").toLowerCase();
-      const prefersBase64Header =
-        req.header("x-x402-encoding") === "base64" ||
-        acceptHeader.includes("text/plain;q=0.9") ||
-        userAgent.includes("agentcash") ||
-        userAgent.includes("x402scan");
-
+      const emitJsonHeader = req.header("x-x402-encoding")?.toLowerCase() === "json";
       const headerJson = JSON.stringify(paymentRequiredV2Payload);
       const headerBase64 = Buffer.from(headerJson).toString("base64");
 
-      res.setHeader("PAYMENT-REQUIRED", prefersBase64Header ? headerBase64 : headerJson);
+      res.setHeader("PAYMENT-REQUIRED", emitJsonHeader ? headerJson : headerBase64);
       res.setHeader("X-PAYMENT-REQUIRED", headerBase64);
       res.setHeader("x-payment-protocol", "x402");
       res.setHeader("x402-network", requirement.network);

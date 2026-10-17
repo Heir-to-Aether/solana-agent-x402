@@ -22,7 +22,7 @@ export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
   const rawNetwork =
     config.network ||
     process.env.SOLANA_NETWORK ||
-    "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
+    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
   const baseUrl = (config.baseUrl || process.env.API_BASE_URL || "http://localhost:4020").replace(/\/$/, "");
 
   const isDevnet = rawNetwork.toLowerCase().includes("devnet") || rawNetwork.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
@@ -290,7 +290,7 @@ export function getLlmsTxt(config: DiscoveryConfig = {}): string {
   const network =
     config.network ||
     process.env.SOLANA_NETWORK ||
-    "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
+    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
   const baseUrl = (config.baseUrl || process.env.API_BASE_URL || "http://localhost:4020").replace(/\/$/, "");
 
   return `# Solana Token Risk, Bundler Detection & MEV Intelligence API (x402)
@@ -422,6 +422,11 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
     ],
     "x-agentcash-guidance": {
       llmsTxtUrl: `${baseUrl}/llms.txt`
+    },
+    "x-agentcash-provenance": {
+      ownershipProofs: [
+        "https://github.com/Heir-to-Aether/solana-agent-x402"
+      ]
     },
     components: {
       securitySchemes: {
