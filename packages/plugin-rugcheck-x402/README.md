@@ -1,8 +1,8 @@
-# @elizaos/plugin-rugcheck-x402
+# @lordkade/plugin-rugcheck-x402
 
 > Autonomous Solana token risk audit, honeypot detection, genesis bundler/sniper identification, and MEV telemetry plugin for **ElizaOS** and **Solana Agent Kit**, powered by **x402 HTTP micropayments**.
 
-[![npm version](https://img.shields.io/npm/v/@elizaos/plugin-rugcheck-x402.svg)](https://www.npmjs.com/package/@elizaos/plugin-rugcheck-x402)
+[![npm version](https://img.shields.io/npm/v/@lordkade/plugin-rugcheck-x402.svg)](https://www.npmjs.com/package/@lordkade/plugin-rugcheck-x402)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -14,14 +14,14 @@ When autonomous AI agents trade on Solana, they face severe risks:
 2. **Bundler & Sniper Cabals**: Coordinated multi-wallet groups that buy up to 80% of supply in the genesis block via Jito tips, waiting to dump on your agent.
 3. **MEV Sandwich Attacks**: Searcher bots frontrunning trades on Raydium or Pump.fun due to misconfigured slippage and low priority fees.
 
-`@elizaos/plugin-rugcheck-x402` equips your agents with an autonomous pre-flight security scan that costs mere **fractions of a cent ($0.002 - $0.005 USDC)**, paid completely machine-to-machine via the open **x402 protocol**.
+`@lordkade/plugin-rugcheck-x402` equips your agents with an autonomous pre-flight security scan that costs mere **fractions of a cent ($0.002 - $0.005 USDC)**, paid completely machine-to-machine via the open **x402 protocol**.
 
 ---
 
 ## 📦 Installation
 
 ```bash
-npm install @elizaos/plugin-rugcheck-x402 @solana/web3.js
+npm install @lordkade/plugin-rugcheck-x402 @solana/web3.js
 ```
 
 ---
@@ -34,7 +34,7 @@ Add `rugcheckX402Plugin` to your Eliza character's plugin list:
 
 ```typescript
 import { Character } from "@elizaos/core";
-import { rugcheckX402Plugin } from "@elizaos/plugin-rugcheck-x402";
+import { rugcheckX402Plugin } from "@lordkade/plugin-rugcheck-x402";
 
 export const tradingAgent: Character = {
   name: "SolanaSafeguard",

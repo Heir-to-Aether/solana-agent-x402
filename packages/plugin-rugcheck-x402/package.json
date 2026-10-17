@@ -1,5 +1,5 @@
 {
-  "name": "@elizaos/plugin-rugcheck-x402",
+  "name": "@lordkade/plugin-rugcheck-x402",
   "version": "1.0.0",
   "description": "ElizaOS and Solana Agent Kit plugin for autonomous token risk analysis, honeypot detection, bundler sniping identification, and MEV telemetry gated by x402 micropayments",
   "main": "dist/index.js",
