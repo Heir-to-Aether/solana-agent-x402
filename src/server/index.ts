@@ -67,8 +67,8 @@ export function createApp() {
 
   // Mount x402 payment challenge & verification middleware
   const x402Middleware = createX402Middleware(x402Routes, {
-    recipientAddress: process.env.SOLANA_RECIPIENT_ADDRESS || "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-    network: process.env.SOLANA_NETWORK || "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    recipientAddress: process.env.SOLANA_RECIPIENT_WALLET || process.env.SOLANA_RECIPIENT_ADDRESS,
+    network: process.env.SOLANA_NETWORK,
     allowSimulatedDevnet: true,
   });
 
