@@ -30,6 +30,7 @@ export function createApiRouter(
         fullSecurityAudit: "$0.005 USDC (5,000 base units)",
       },
       discoveryManifest: "/.well-known/x402.json",
+      openapiSpec: "/openapi.json",
       llmsTxt: "/llms.txt",
       agentDocumentation: "/llms.txt",
     });

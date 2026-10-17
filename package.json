@@ -41,6 +41,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@agentcash/discovery": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.13.9",

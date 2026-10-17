@@ -7,7 +7,7 @@ import { TokenRiskService } from "../services/token-risk.js";
 import { BundlerDetectorService } from "../services/bundler-detector.js";
 import { MevIntelService } from "../services/mev-intel.js";
 import { SolanaRpcService } from "../services/solana-rpc.js";
-import { getDiscoveryManifest, getLlmsTxt } from "./discovery.js";
+import { getDiscoveryManifest, getLlmsTxt, getOpenApiSpec } from "./discovery.js";
 
 dotenv.config();
 
@@ -17,6 +17,30 @@ export function createApp() {
   app.set("trust proxy", true);
   app.use(cors());
   app.use(express.json());
+
+  // Canonical OpenAPI 3.1 Discovery Specification for x402scan, Poncho, and Autonomous Agents
+  app.get("/openapi.json", (req, res) => {
+    const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0].trim() || req.protocol || "http";
+    const host = req.get("host");
+    const baseUrl = process.env.API_BASE_URL || (host ? `${proto}://${host}` : undefined);
+    res.setHeader("Content-Type", "application/json");
+    res.json(getOpenApiSpec({ baseUrl }));
+  });
+
+  // Legacy /.well-known/x402 route pointing directly to the OpenAPI discovery spec
+  app.get("/.well-known/x402", (req, res) => {
+    const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0].trim() || req.protocol || "http";
+    const host = req.get("host");
+    const baseUrl = process.env.API_BASE_URL || (host ? `${proto}://${host}` : undefined);
+    res.setHeader("Content-Type", "application/json");
+    res.json(getOpenApiSpec({ baseUrl }));
+  });
+
+  // Transparent favicon endpoint to ensure zero discovery audit warnings
+  app.get("/favicon.ico", (req, res) => {
+    res.setHeader("Content-Type", "image/x-icon");
+    res.status(204).end();
+  });
 
   // Machine-Readable Agent Discovery Endpoints (un-gated for crawlers, x402scan, Bazaar)
   app.get("/.well-known/x402.json", (req, res) => {
@@ -82,6 +106,7 @@ export function createApp() {
   app.get("/", (req, res) => {
     res.json({
       message: "x402 Solana Intelligence API for AI Agents",
+      openapi: "/openapi.json",
       documentation: "/llms.txt",
       discovery: "/.well-known/x402.json",
       health: "/api/health",

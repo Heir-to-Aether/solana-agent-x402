@@ -52,7 +52,7 @@ export function createX402Middleware(
     options.recipientAddress ||
     process.env.SOLANA_RECIPIENT_WALLET ||
     process.env.SOLANA_RECIPIENT_ADDRESS ||
-    "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
+    "RVmRQMtMAdyWk3dq678N6GUPkrK9yDeDLqTQsFZMpcU";
   const rawNetwork =
     options.network ||
     process.env.SOLANA_NETWORK ||
@@ -127,25 +127,114 @@ export function createX402Middleware(
 
       activeChallenges.set(nonce, { requirement, createdAt: timestamp });
 
+      const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0].trim() || req.protocol || "http";
+      const host = req.get("host");
+      const baseUrl = (process.env.API_BASE_URL || (host ? `${proto}://${host}` : "http://localhost:4020")).replace(/\/$/, "");
+      const fullUrl = `${baseUrl}${req.originalUrl || req.path}`;
+      const isPost = methodUpper === "POST";
+
+      const acceptsEntry = {
+        scheme: "exact",
+        network: requirement.network,
+        amount: requirement.amount,
+        asset: requirement.asset,
+        payTo: requirement.payTo,
+        maxTimeoutSeconds: 300,
+        extra: {
+          nonce: requirement.nonce,
+          timestamp: requirement.timestamp,
+          expiresAt: requirement.expiresAt,
+          assetDecimals: 6,
+        },
+      };
+
+      const bazaarSchema = {
+        properties: {
+          input: {
+            properties: isPost
+              ? {
+                  body: {
+                    type: "object",
+                    required: ["tokenAddress"],
+                    properties: {
+                      tokenAddress: {
+                        type: "string",
+                        description: "Base58-encoded Solana SPL token mint address",
+                      },
+                    },
+                  },
+                }
+              : {
+                  queryParams: {
+                    address: {
+                      type: "string",
+                      description: "Base58-encoded Solana SPL token mint address",
+                    },
+                  },
+                },
+          },
+          output: {
+            properties: {
+              example: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean" },
+                  data: { type: "object" },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const paymentRequiredV2Payload = {
+        x402Version: 2,
+        error: "Payment Required",
+        message: `Endpoint requires micro-payment of ${matchingConfig.priceUsd} (${matchingConfig.amountBaseUnits} USDC base units). Sign payment challenge to proceed.`,
+        resource: {
+          url: fullUrl,
+          description: matchingConfig.description,
+          mimeType: "application/json",
+        },
+        accepts: [acceptsEntry],
+        extensions: {
+          bazaar: {
+            schema: bazaarSchema,
+          },
+        },
+        ...requirement,
+        x402: requirement,
+        instructions: {
+          step1: "Extract payment specifications from PAYMENT-REQUIRED header or accepts payload.",
+          step2: "Construct payload string: `${nonce}:${payerPublicKey}:${payTo}:${amount}:${timestamp}`.",
+          step3: "Sign message using your agent's Solana keypair (Ed25519 signature).",
+          step4: "Re-send request with 'PAYMENT-SIGNATURE' header containing base64 JSON payload.",
+        },
+      };
+
       res.status(402);
       res.setHeader("Content-Type", "application/json");
-      res.setHeader("PAYMENT-REQUIRED", JSON.stringify(requirement));
+
+      const acceptHeader = (req.header("accept") || "").toLowerCase();
+      const userAgent = (req.header("user-agent") || "").toLowerCase();
+      const prefersBase64Header =
+        req.header("x-x402-encoding") === "base64" ||
+        acceptHeader.includes("text/plain;q=0.9") ||
+        userAgent.includes("agentcash") ||
+        userAgent.includes("x402scan");
+
+      const headerJson = JSON.stringify(paymentRequiredV2Payload);
+      const headerBase64 = Buffer.from(headerJson).toString("base64");
+
+      res.setHeader("PAYMENT-REQUIRED", prefersBase64Header ? headerBase64 : headerJson);
+      res.setHeader("X-PAYMENT-REQUIRED", headerBase64);
+      res.setHeader("x-payment-protocol", "x402");
       res.setHeader("x402-network", requirement.network);
       res.setHeader("x402-pay-to", requirement.payTo);
       res.setHeader("x402-amount", requirement.amount);
       res.setHeader("x402-nonce", requirement.nonce);
 
-      res.json({
-        error: "Payment Required",
-        message: `Endpoint requires micro-payment of ${matchingConfig.priceUsd} (${matchingConfig.amountBaseUnits} USDC base units). Sign payment challenge to proceed.`,
-        x402: requirement,
-        instructions: {
-          step1: "Extract payment specifications from PAYMENT-REQUIRED header or x402 payload.",
-          step2: "Construct payload string: `${nonce}:${payerPublicKey}:${payTo}:${amount}:${timestamp}`.",
-          step3: "Sign message using your agent's Solana keypair (Ed25519 signature).",
-          step4: "Re-send request with 'PAYMENT-SIGNATURE' header containing base64 JSON payload.",
-        },
-      });
+      res.json(paymentRequiredV2Payload);
       return;
     }
 

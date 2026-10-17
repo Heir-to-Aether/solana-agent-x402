@@ -276,6 +276,45 @@ describe("x402 Payment Protocol & Autonomous Agent Flow", () => {
     expect(text).toContain("/.well-known/x402.json");
   });
 
+  it("should serve canonical OpenAPI 3.1.0 specification at /openapi.json and /.well-known/x402", async () => {
+    // 1. Check /openapi.json
+    const res = await fetch(`${baseUrl}/openapi.json`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/json");
+
+    const spec = (await res.json()) as any;
+    expect(spec.openapi).toBe("3.1.0");
+    expect(spec.info.title).toContain("Solana Token Risk");
+    expect(spec.info.contact.email).toBe("merchants@merit.systems");
+    expect(spec.info["x-guidance"]).toBeTruthy();
+    expect(spec.components.securitySchemes.x402).toBeDefined();
+    expect(spec.components.securitySchemes.siwx).toBeDefined();
+
+    // Verify free routes have security: []
+    expect(spec.paths["/"].get.security).toEqual([]);
+    expect(spec.paths["/api/health"].get.security).toEqual([]);
+    expect(spec.paths["/llms.txt"].get.security).toEqual([]);
+    expect(spec.paths["/.well-known/x402.json"].get.security).toEqual([]);
+    expect(spec.paths["/openapi.json"].get.security).toEqual([]);
+
+    // Verify paid routes declare x-payment-info and 402 responses
+    const riskOp = spec.paths["/api/token/risk/{address}"].get;
+    expect(riskOp["x-payment-info"].price.amount).toBe("0.002000");
+    expect(riskOp.responses["402"]).toBeDefined();
+    expect(riskOp.security).toEqual([{ x402: [] }]);
+
+    const auditOp = spec.paths["/api/token/full-audit"].post;
+    expect(auditOp["x-payment-info"].price.amount).toBe("0.005000");
+    expect(auditOp.requestBody.content["application/json"].schema).toBeDefined();
+    expect(auditOp.responses["402"]).toBeDefined();
+
+    // 2. Check /.well-known/x402 alias
+    const aliasRes = await fetch(`${baseUrl}/.well-known/x402`);
+    expect(aliasRes.status).toBe(200);
+    const aliasSpec = (await aliasRes.json()) as any;
+    expect(aliasSpec.openapi).toBe("3.1.0");
+  });
+
   it("should strictly protect against paywall bypass via trailing slash on GET and POST endpoints", async () => {
     const mint = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
 
