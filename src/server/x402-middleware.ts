@@ -48,12 +48,26 @@ export function createX402Middleware(
   routeConfigs: Record<string, X402RouteConfig>,
   options: X402MiddlewareOptions = {}
 ) {
-  const recipientAddress = options.recipientAddress || process.env.SOLANA_RECIPIENT_ADDRESS || "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
-  const network = options.network || process.env.SOLANA_NETWORK || "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"; // Solana Devnet CAIP-2
+  const recipientAddress =
+    options.recipientAddress ||
+    process.env.SOLANA_RECIPIENT_WALLET ||
+    process.env.SOLANA_RECIPIENT_ADDRESS ||
+    "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
+  const rawNetwork =
+    options.network ||
+    process.env.SOLANA_NETWORK ||
+    "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"; // Solana Devnet CAIP-2
   const allowSimulatedDevnet = options.allowSimulatedDevnet ?? true;
 
+  // Resolve network CAIP-2 identifier
+  const isDevnet = rawNetwork.toLowerCase().includes("devnet") || rawNetwork.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
+  const network = rawNetwork.startsWith("solana:")
+    ? rawNetwork
+    : isDevnet
+    ? "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+    : "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+
   // Resolve USDC mint address according to network
-  const isDevnet = network.toLowerCase().includes("devnet") || network.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
   const usdcAssetAddress = isDevnet
     ? "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" // Devnet USDC
     : "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // Mainnet USDC

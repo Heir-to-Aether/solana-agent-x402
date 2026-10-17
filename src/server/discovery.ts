@@ -16,15 +16,21 @@ export interface DiscoveryConfig {
 export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
   const recipientAddress =
     config.recipientAddress ||
+    process.env.SOLANA_RECIPIENT_WALLET ||
     process.env.SOLANA_RECIPIENT_ADDRESS ||
     "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
-  const network =
+  const rawNetwork =
     config.network ||
     process.env.SOLANA_NETWORK ||
     "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
   const baseUrl = (config.baseUrl || process.env.API_BASE_URL || "http://localhost:4020").replace(/\/$/, "");
 
-  const isDevnet = network.toLowerCase().includes("devnet") || network.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
+  const isDevnet = rawNetwork.toLowerCase().includes("devnet") || rawNetwork.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
+  const network = rawNetwork.startsWith("solana:")
+    ? rawNetwork
+    : isDevnet
+    ? "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+    : "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
   const usdcMint = isDevnet
     ? "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" // Devnet USDC
     : "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // Mainnet USDC
