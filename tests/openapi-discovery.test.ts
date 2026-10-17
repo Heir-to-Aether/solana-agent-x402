@@ -139,9 +139,12 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
     expect(json.paths["/api/token/full-audit"]).toBeDefined();
   });
 
-  it("should serve /favicon.ico with 204 status to eliminate discovery favicon warning", async () => {
+  it("should serve /favicon.ico with 200 status and image content-type to eliminate discovery favicon warning", async () => {
     const res = await fetch(`${baseUrl}/favicon.ico`);
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("image/x-icon");
+    const buffer = await res.arrayBuffer();
+    expect(buffer.byteLength).toBeGreaterThan(0);
   });
 
   it("should return valid 402 challenge with x402Version 2 and accepts array on paid endpoints", async () => {

@@ -36,10 +36,15 @@ export function createApp() {
     res.json(getOpenApiSpec({ baseUrl }));
   });
 
-  // Transparent favicon endpoint to ensure zero discovery audit warnings
-  app.get("/favicon.ico", (req, res) => {
+  // Minimal 1x1 ICO favicon buffer to ensure zero discovery audit warnings
+  const FAVICON_BUFFER = Buffer.from(
+    "AAABAAEAAQEAAAEAGACQAQAAFgAAACgAAAABAAAAAgAAAAEAGAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8AAAAA",
+    "base64"
+  );
+  app.get(["/favicon.ico", "/favicon.png", "/favicon.svg"], (req, res) => {
     res.setHeader("Content-Type", "image/x-icon");
-    res.status(204).end();
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.status(200).send(FAVICON_BUFFER);
   });
 
   // Machine-Readable Agent Discovery Endpoints (un-gated for crawlers, x402scan, Bazaar)
