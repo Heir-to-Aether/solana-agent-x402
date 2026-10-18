@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run ../../tests/plugin-rugcheck-x402.test.ts",
+    "test": "vitest run ../../tests/plugin-rugcheck-x402.test.ts --root ../..",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -40,6 +40,7 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/node": "^22.13.9",
     "typescript": "^5.7.3"
   },
   "publishConfig": {

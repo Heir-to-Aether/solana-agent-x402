@@ -1,11 +1,11 @@
 # Multi-stage production build for Solana x402 Intelligence API
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 # Install build dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source code and build config
 COPY tsconfig.json ./
@@ -16,7 +16,7 @@ COPY packages/ ./packages/
 RUN npm run build
 
 # Stage 2: Production runtime image
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ ENV PORT=4020
 
 # Install production dependencies only
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy compiled assets from builder
 COPY --from=builder /app/dist ./dist
