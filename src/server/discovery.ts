@@ -11,6 +11,7 @@ export interface DiscoveryConfig {
   baseUrl?: string;
   recipientAddress?: string;
   network?: string;
+  contactEmail?: string;
 }
 
 export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
@@ -24,6 +25,11 @@ export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
     process.env.SOLANA_NETWORK ||
     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
   const baseUrl = (config.baseUrl || process.env.API_BASE_URL || "http://localhost:4020").replace(/\/$/, "");
+  const contactEmail =
+    config.contactEmail ||
+    process.env.MERCHANT_CONTACT_EMAIL ||
+    process.env.CONTACT_EMAIL ||
+    "merchants@merit.systems";
 
   const isDevnet = rawNetwork.toLowerCase().includes("devnet") || rawNetwork.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
   const network = rawNetwork.startsWith("solana:")
@@ -44,7 +50,9 @@ export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
     version: "1.0.0",
     homepage: baseUrl,
     documentationUrl: `${baseUrl}/llms.txt`,
+    repository: "https://github.com/Heir-to-Aether/solana-agent-x402",
     contact: {
+      email: contactEmail,
       url: `${baseUrl}/api/health`,
     },
     paymentProtocol: {
@@ -393,6 +401,11 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
     process.env.SOLANA_NETWORK ||
     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
   const baseUrl = (config.baseUrl || process.env.API_BASE_URL || "https://solana-agent-x402.onrender.com").replace(/\/$/, "");
+  const contactEmail =
+    config.contactEmail ||
+    process.env.MERCHANT_CONTACT_EMAIL ||
+    process.env.CONTACT_EMAIL ||
+    "merchants@merit.systems";
 
   const isDevnet = rawNetwork.toLowerCase().includes("devnet") || rawNetwork.toLowerCase().includes("etwtrabzayq6imfeykouru166vu2xqa1");
   const network = rawNetwork.startsWith("solana:")
@@ -410,7 +423,7 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
       "x-guidance": "Autonomous AI agent guide: Query GET /api/health for service status and pricing. Protected endpoints (/api/token/risk/{address}, /api/token/bundler/{address}, /api/token/mev/{address}, /api/token/full-audit) require x402 payment in USDC on Solana. Unauthenticated requests return HTTP 402 with PAYMENT-REQUIRED specifications. Sign the challenge with your Solana wallet Ed25519 key and retry with PAYMENT-SIGNATURE header. Full markdown documentation is available at /llms.txt.",
       contact: {
         name: "Merit Systems Merchant Support",
-        email: "merchants@merit.systems",
+        email: contactEmail,
         url: "https://github.com/Heir-to-Aether/solana-agent-x402"
       }
     },
@@ -650,6 +663,24 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
           responses: {
             "200": {
               description: "x402 discovery manifest document",
+              content: {
+                "application/json": {
+                  schema: { type: "object" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/.well-known/x402": {
+        get: {
+          summary: "x402 Discovery Spec Endpoint",
+          description: "Free discovery endpoint providing the canonical OpenAPI 3.1.0 discovery document.",
+          operationId: "getLegacyX402Discovery",
+          security: [],
+          responses: {
+            "200": {
+              description: "Canonical OpenAPI 3.1.0 discovery document",
               content: {
                 "application/json": {
                   schema: { type: "object" }

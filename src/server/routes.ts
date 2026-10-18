@@ -36,10 +36,14 @@ export function createApiRouter(
     });
   });
 
-  // Protected: Token Risk Audit
-  router.get("/token/risk/:address", async (req: Request, res: Response) => {
+  // Protected: Token Risk Audit (supports /token/risk/:address and /token/risk?address=...)
+  router.get(["/token/risk", "/token/risk/:address"], async (req: Request, res: Response) => {
     try {
-      const { address } = req.params;
+      const address = req.params?.address || (req.query?.address as string) || (req.query?.tokenAddress as string);
+      if (!address) {
+        res.status(400).json({ success: false, error: "Missing required parameter 'address'" });
+        return;
+      }
       const report = await riskService.auditToken(address);
       res.json({
         success: true,
@@ -51,10 +55,14 @@ export function createApiRouter(
     }
   });
 
-  // Protected: Bundler & Sniper Cluster Detection
-  router.get("/token/bundler/:address", async (req: Request, res: Response) => {
+  // Protected: Bundler & Sniper Cluster Detection (supports /token/bundler/:address and /token/bundler?address=...)
+  router.get(["/token/bundler", "/token/bundler/:address"], async (req: Request, res: Response) => {
     try {
-      const { address } = req.params;
+      const address = req.params?.address || (req.query?.address as string) || (req.query?.tokenAddress as string);
+      if (!address) {
+        res.status(400).json({ success: false, error: "Missing required parameter 'address'" });
+        return;
+      }
       const analysis = await bundlerService.detectBundlers(address);
       res.json({
         success: true,
@@ -66,10 +74,14 @@ export function createApiRouter(
     }
   });
 
-  // Protected: MEV & Frontrunning Intelligence
-  router.get("/token/mev/:address", async (req: Request, res: Response) => {
+  // Protected: MEV & Frontrunning Intelligence (supports /token/mev/:address and /token/mev?address=...)
+  router.get(["/token/mev", "/token/mev/:address"], async (req: Request, res: Response) => {
     try {
-      const { address } = req.params;
+      const address = req.params?.address || (req.query?.address as string) || (req.query?.tokenAddress as string);
+      if (!address) {
+        res.status(400).json({ success: false, error: "Missing required parameter 'address'" });
+        return;
+      }
       const intel = await mevService.getMevIntelligence(address);
       res.json({
         success: true,

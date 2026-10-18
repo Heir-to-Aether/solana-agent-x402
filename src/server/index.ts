@@ -70,17 +70,32 @@ export function createApp() {
   const bundlerService = new BundlerDetectorService(rpcService);
   const mevService = new MevIntelService(rpcService);
 
-  // Define x402 paywall route configurations
+  // Define x402 paywall route configurations (supports both /:address and ?address= parameterization)
   const x402Routes: Record<string, X402RouteConfig> = {
+    "GET /api/token/risk": {
+      priceUsd: "$0.002",
+      amountBaseUnits: "2000", // 0.002 USDC (6 decimals)
+      description: "Solana Token Risk & Honeypot Audit",
+    },
     "GET /api/token/risk/:address": {
       priceUsd: "$0.002",
       amountBaseUnits: "2000", // 0.002 USDC (6 decimals)
       description: "Solana Token Risk & Honeypot Audit",
     },
+    "GET /api/token/bundler": {
+      priceUsd: "$0.003",
+      amountBaseUnits: "3000", // 0.003 USDC (6 decimals)
+      description: "Solana Genesis Bundler & Sniper Cluster Detection",
+    },
     "GET /api/token/bundler/:address": {
       priceUsd: "$0.003",
       amountBaseUnits: "3000", // 0.003 USDC (6 decimals)
       description: "Solana Genesis Bundler & Sniper Cluster Detection",
+    },
+    "GET /api/token/mev": {
+      priceUsd: "$0.002",
+      amountBaseUnits: "2000", // 0.002 USDC (6 decimals)
+      description: "Solana MEV Sandwich Vulnerability & Priority Gas Intelligence",
     },
     "GET /api/token/mev/:address": {
       priceUsd: "$0.002",

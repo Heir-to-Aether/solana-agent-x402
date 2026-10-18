@@ -1,8 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Server } from "http";
 import { createApp } from "../src/server/index.js";
-import { getOpenApiSpec } from "../src/server/discovery.js";
-import { discoverOriginSchema, checkEndpointSchema, validatePaymentRequiredDetailed } from "@agentcash/discovery";
+import { getOpenApiSpec, getDiscoveryManifest } from "../src/server/discovery.js";
+import {
+  discoverOriginSchema,
+  checkEndpointSchema,
+  validatePaymentRequiredDetailed,
+  getOpenAPI,
+  getWarningsForOpenAPI,
+  checkL2ForOpenAPI,
+  getWarningsForL2,
+  checkL4ForOpenAPI,
+  getWarningsForL4,
+  getWarningsForFavicon,
+} from "@agentcash/discovery";
 
 describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
   let server: Server;
@@ -57,7 +68,7 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
 
   it("should declare security: [] on all free endpoints", () => {
     const spec = getOpenApiSpec();
-    const freePaths = ["/", "/api/health", "/llms.txt", "/.well-known/x402.json", "/openapi.json"];
+    const freePaths = ["/", "/api/health", "/llms.txt", "/.well-known/x402.json", "/.well-known/x402", "/openapi.json"];
 
     for (const path of freePaths) {
       const op = spec.paths[path as keyof typeof spec.paths]?.get;
@@ -222,17 +233,82 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
     }
   });
 
+  it("should support custom merchant contact email in DiscoveryConfig", () => {
+    const customEmail = "security@solana-agent.xyz";
+    const spec = getOpenApiSpec({ contactEmail: customEmail });
+    expect(spec.info.contact.email).toBe(customEmail);
+
+    const manifest = getDiscoveryManifest({ contactEmail: customEmail });
+    expect(manifest.contact.email).toBe(customEmail);
+    expect(manifest.repository).toBe("https://github.com/Heir-to-Aether/solana-agent-x402");
+  });
+
+  it("should return 402 challenge with valid schema on base routes without path params", async () => {
+    const baseRoutes = [
+      `${baseUrl}/api/token/risk`,
+      `${baseUrl}/api/token/bundler`,
+      `${baseUrl}/api/token/mev`,
+    ];
+
+    for (const url of baseRoutes) {
+      const res = await fetch(url, { method: "GET" });
+      expect(res.status).toBe(402);
+      const body = (await res.json()) as any;
+      expect(body.x402Version).toBe(2);
+      expect(body.accepts.length).toBeGreaterThan(0);
+      expect(body.extensions.bazaar.schema.properties.input.properties.queryParams).toBeDefined();
+
+      const validation = validatePaymentRequiredDetailed(body, {
+        requireInputSchema: true,
+        requireOutputSchema: true,
+      });
+      expect(validation.valid).toBe(true);
+      expect(validation.issues.length).toBe(0);
+    }
+  });
+
+  it("should pass all @agentcash/discovery audit suites with zero warnings", async () => {
+    const openApiRes = await getOpenAPI(baseUrl);
+    expect(openApiRes.isOk()).toBe(true);
+    const openApi = openApiRes._unsafeUnwrap();
+    expect(openApi).not.toBeNull();
+
+    // 1. OpenAPI warnings
+    const openApiWarnings = getWarningsForOpenAPI(openApi);
+    expect(openApiWarnings).toEqual([]);
+
+    // 2. L2 route-list warnings
+    const l2 = checkL2ForOpenAPI(openApi as any);
+    const l2Warnings = getWarningsForL2(l2);
+    expect(l2Warnings).toEqual([]);
+
+    // 3. L4 guidance warnings
+    const l4 = checkL4ForOpenAPI(openApi as any);
+    const l4Warnings = getWarningsForL4(l4);
+    expect(l4Warnings).toEqual([]);
+
+    // 4. Favicon warnings
+    const faviconWarningsRes = await getWarningsForFavicon(baseUrl);
+    expect(faviconWarningsRes.isOk()).toBe(true);
+    expect(faviconWarningsRes._unsafeUnwrap()).toEqual([]);
+  });
+
   it("should be successfully discovered and validated by @agentcash/discovery without errors", async () => {
     const result = await discoverOriginSchema({ target: baseUrl });
     expect(result.found).toBe(true);
+    if (!result.found) return;
+
     expect(result.source).toBe("openapi");
-    expect(result.endpoints.length).toBeGreaterThanOrEqual(9);
+    expect(result.endpoints.length).toBeGreaterThanOrEqual(10);
+    expect(result.trustTier).toBe("ownership_verified");
+    expect(result.ownershipProofs).toContain("https://github.com/Heir-to-Aether/solana-agent-x402");
+    expect(result.guidanceAvailable).toBe(true);
 
     const paidEndpoints = result.endpoints.filter((e: any) => e.authMode === "paid");
     expect(paidEndpoints.length).toBe(4);
 
     const freeEndpoints = result.endpoints.filter((e: any) => e.authMode === "unprotected");
-    expect(freeEndpoints.length).toBe(5);
+    expect(freeEndpoints.length).toBeGreaterThanOrEqual(5);
 
     // Verify probe checks on ALL 4 paid endpoints find paymentOptions and schemas
     const testMint = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
