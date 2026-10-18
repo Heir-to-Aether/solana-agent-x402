@@ -51,6 +51,16 @@ export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
     homepage: baseUrl,
     documentationUrl: `${baseUrl}/llms.txt`,
     repository: "https://github.com/Heir-to-Aether/solana-agent-x402",
+    provenance: {
+      ownershipProofs: [
+        "https://github.com/Heir-to-Aether/solana-agent-x402",
+      ],
+    },
+    "x-agentcash-provenance": {
+      ownershipProofs: [
+        "https://github.com/Heir-to-Aether/solana-agent-x402",
+      ],
+    },
     contact: {
       email: contactEmail,
       url: `${baseUrl}/api/health`,
@@ -218,6 +228,107 @@ export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
           },
         },
       },
+      {
+        path: "/api/token/risk",
+        fullUrl: `${baseUrl}/api/token/risk`,
+        method: "GET",
+        summary: "Solana Token Risk & Honeypot Audit",
+        description: "Evaluates honeypot traps, mutable metadata, mint authority, freeze authority, LP lock status, and holder concentration (0-100 risk score) via query parameter.",
+        priceUsd: "$0.002",
+        priceBaseUnits: "2000",
+        asset: "USDC",
+        assetDecimals: 6,
+        parameters: [
+          {
+            name: "address",
+            in: "query",
+            required: true,
+            type: "string",
+            description: "Base58-encoded Solana SPL token mint address",
+          },
+        ],
+        outputSchema: {
+          type: "object",
+          properties: {
+            tokenAddress: { type: "string" },
+            riskScore: { type: "number", minimum: 0, maximum: 100 },
+            riskLevel: { type: "string", enum: ["LOW", "MODERATE", "HIGH", "CRITICAL_DANGER"] },
+            flags: {
+              type: "object",
+              properties: {
+                isHoneypot: { type: "boolean" },
+                hasMintAuthority: { type: "boolean" },
+                hasFreezeAuthority: { type: "boolean" },
+                isLpBurned: { type: "boolean" },
+                topHoldersConcentration: { type: "number" },
+              },
+            },
+            topHolders: { type: "array" },
+          },
+        },
+      },
+      {
+        path: "/api/token/bundler",
+        fullUrl: `${baseUrl}/api/token/bundler`,
+        method: "GET",
+        summary: "Genesis Bundler & Sniper Cluster Detection",
+        description: "Detects coordinated genesis block snipers, Jito tip bundles, multi-wallet stealth cabals, and developer supply dump threats via query parameter.",
+        priceUsd: "$0.003",
+        priceBaseUnits: "3000",
+        asset: "USDC",
+        assetDecimals: 6,
+        parameters: [
+          {
+            name: "address",
+            in: "query",
+            required: true,
+            type: "string",
+            description: "Base58-encoded Solana SPL token mint address",
+          },
+        ],
+        outputSchema: {
+          type: "object",
+          properties: {
+            tokenAddress: { type: "string" },
+            summary: {
+              type: "object",
+              properties: {
+                threatScore: { type: "number" },
+                recommendation: { type: "string" },
+                bundledSupplyPercent: { type: "number" },
+              },
+            },
+          },
+        },
+      },
+      {
+        path: "/api/token/mev",
+        fullUrl: `${baseUrl}/api/token/mev`,
+        method: "GET",
+        summary: "MEV Sandwich Vulnerability & Priority Gas Intelligence",
+        description: "Real-time sandwich attack risk, active searcher presence, recommended priority fee, and safe slippage guardrails via query parameter.",
+        priceUsd: "$0.002",
+        priceBaseUnits: "2000",
+        asset: "USDC",
+        assetDecimals: 6,
+        parameters: [
+          {
+            name: "address",
+            in: "query",
+            required: true,
+            type: "string",
+            description: "Base58-encoded Solana SPL token mint address",
+          },
+        ],
+        outputSchema: {
+          type: "object",
+          properties: {
+            tokenAddress: { type: "string" },
+            sandwichVulnerability: { type: "string" },
+            recommendedPriorityFeeMicroLamports: { type: "number" },
+          },
+        },
+      },
     ],
     // Coinbase Bazaar / x402 resource catalog
     resources: [
@@ -258,6 +369,54 @@ export function getDiscoveryManifest(config: DiscoveryConfig = {}) {
         type: "http",
         mimeType: "application/json",
         description: "Solana MEV Sandwich Vulnerability & Priority Gas Intelligence",
+        accepts: [
+          {
+            scheme: "exact",
+            network,
+            amount: "2000",
+            asset: usdcMint,
+            payTo: recipientAddress,
+            maxTimeoutSeconds: 300,
+          },
+        ],
+      },
+      {
+        url: `${baseUrl}/api/token/risk`,
+        type: "http",
+        mimeType: "application/json",
+        description: "Solana Token Risk & Honeypot Audit",
+        accepts: [
+          {
+            scheme: "exact",
+            network,
+            amount: "2000",
+            asset: usdcMint,
+            payTo: recipientAddress,
+            maxTimeoutSeconds: 300,
+          },
+        ],
+      },
+      {
+        url: `${baseUrl}/api/token/bundler`,
+        type: "http",
+        mimeType: "application/json",
+        description: "Genesis Bundler & Sniper Cluster Detection",
+        accepts: [
+          {
+            scheme: "exact",
+            network,
+            amount: "3000",
+            asset: usdcMint,
+            payTo: recipientAddress,
+            maxTimeoutSeconds: 300,
+          },
+        ],
+      },
+      {
+        url: `${baseUrl}/api/token/mev`,
+        type: "http",
+        mimeType: "application/json",
+        description: "MEV Sandwich Vulnerability & Priority Gas Intelligence",
         accepts: [
           {
             scheme: "exact",
@@ -339,10 +498,10 @@ When an autonomous agent queries a paid endpoint without payment credentials:
 ## API Endpoints & Pricing (USDC Base Units)
 
 ### 1. Token Risk & Honeypot Analysis
-- **Endpoint**: \`GET /api/token/risk/:address\`
+- **Endpoint**: \`GET /api/token/risk/:address\` or \`GET /api/token/risk?address=:address\`
 - **Price**: $0.002 USDC (2,000 base units)
 - **Description**: Verifies honeypot status, mint authority, freeze authority, LP lock status, holder concentration, and calculates composite risk score (0-100).
-- **Parameters**: \`address\` (string, path) - Base58-encoded Solana SPL token mint address.
+- **Parameters**: \`address\` (string, path or query) - Base58-encoded Solana SPL token mint address.
 - **Key Output Fields**:
   - \`riskScore\`: 0-100 composite risk (higher is more dangerous).
   - \`riskLevel\`: LOW | MODERATE | HIGH | CRITICAL_DANGER.
@@ -351,20 +510,20 @@ When an autonomous agent queries a paid endpoint without payment credentials:
   - \`flags.isLpBurned\`: boolean (liquidity pool locked or burned).
 
 ### 2. Genesis Bundler & Sniper Cluster Detection
-- **Endpoint**: \`GET /api/token/bundler/:address\`
+- **Endpoint**: \`GET /api/token/bundler/:address\` or \`GET /api/token/bundler?address=:address\`
 - **Price**: $0.003 USDC (3,000 base units)
 - **Description**: Analyzes block zero transactions, Jito bundle tips, multi-wallet stealth cabals, and developer supply dump threats.
-- **Parameters**: \`address\` (string, path) - Base58-encoded Solana SPL token mint address.
+- **Parameters**: \`address\` (string, path or query) - Base58-encoded Solana SPL token mint address.
 - **Key Output Fields**:
   - \`summary.threatScore\`: 0-100 sniper threat score.
   - \`summary.recommendation\`: PROCEED_SAFE | CAUTION_SNIPERS_ACTIVE | EXTREME_DUMP_RISK.
   - \`summary.bundledSupplyPercent\`: Percentage of total supply acquired via launch bundles.
 
 ### 3. MEV Sandwich Vulnerability & Priority Gas Intelligence
-- **Endpoint**: \`GET /api/token/mev/:address\`
+- **Endpoint**: \`GET /api/token/mev/:address\` or \`GET /api/token/mev?address=:address\`
 - **Price**: $0.002 USDC (2,000 base units)
 - **Description**: Real-time sandwich attack risk, active searcher presence, recommended priority fee, and safe slippage guardrails.
-- **Parameters**: \`address\` (string, path) - Base58-encoded Solana SPL token mint address.
+- **Parameters**: \`address\` (string, path or query) - Base58-encoded Solana SPL token mint address.
 - **Key Output Fields**:
   - \`sandwichVulnerability\`: LOW | MEDIUM | HIGH | CRITICAL.
   - \`recommendedPriorityFeeMicroLamports\`: Dynamic priority fee to outpace searchers.
@@ -708,6 +867,69 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
           }
         }
       },
+      "/api/token/risk": {
+        get: {
+          summary: "Solana Token Risk & Honeypot Audit",
+          description: "Audits honeypot traps, mutable metadata, mint authority, freeze authority, LP lock status, and holder concentration (0-100 composite risk score) via query parameter. Gated by x402 ($0.002 USDC).",
+          operationId: "getTokenRiskByQuery",
+          tags: ["Token Intelligence"],
+          security: [{ x402: [] }],
+          "x-payment-info": {
+            price: {
+              mode: "fixed",
+              currency: "USD",
+              amount: "0.002000"
+            },
+            protocols: [{ x402: {} }]
+          },
+          parameters: [
+            {
+              name: "address",
+              in: "query",
+              required: true,
+              description: "Base58-encoded Solana SPL token mint address (e.g. 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU)",
+              schema: {
+                type: "string",
+                pattern: "^[1-9A-HJ-NP-za-km-z]{32,44}$"
+              }
+            }
+          ],
+          responses: {
+            "200": {
+              description: "Successful token risk analysis report",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["success", "data"],
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      data: { $ref: "#/components/schemas/TokenRiskReport" },
+                      paymentReceipt: { type: "object" }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              description: "Invalid Solana token address",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+                }
+              }
+            },
+            "402": {
+              description: "Payment Required - returns x402 payment challenge in USDC on Solana",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/PaymentRequiredResponse" }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/token/risk/{address}": {
         get: {
           summary: "Solana Token Risk & Honeypot Audit",
@@ -771,6 +993,69 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
           }
         }
       },
+      "/api/token/bundler": {
+        get: {
+          summary: "Genesis Bundler & Sniper Cluster Detection",
+          description: "Detects coordinated block-zero sniper clusters, Jito bundle tips, multi-wallet stealth cabals, and developer supply dump threats via query parameter. Gated by x402 ($0.003 USDC).",
+          operationId: "getBundlerDetectionByQuery",
+          tags: ["Token Intelligence"],
+          security: [{ x402: [] }],
+          "x-payment-info": {
+            price: {
+              mode: "fixed",
+              currency: "USD",
+              amount: "0.003000"
+            },
+            protocols: [{ x402: {} }]
+          },
+          parameters: [
+            {
+              name: "address",
+              in: "query",
+              required: true,
+              description: "Base58-encoded Solana SPL token mint address (e.g. 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU)",
+              schema: {
+                type: "string",
+                pattern: "^[1-9A-HJ-NP-za-km-z]{32,44}$"
+              }
+            }
+          ],
+          responses: {
+            "200": {
+              description: "Successful bundler & sniper cluster analysis report",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["success", "data"],
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      data: { $ref: "#/components/schemas/BundlerAnalysis" },
+                      paymentReceipt: { type: "object" }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              description: "Invalid Solana token address",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+                }
+              }
+            },
+            "402": {
+              description: "Payment Required - returns x402 payment challenge in USDC on Solana",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/PaymentRequiredResponse" }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/token/bundler/{address}": {
         get: {
           summary: "Genesis Bundler & Sniper Cluster Detection",
@@ -809,6 +1094,69 @@ export function getOpenApiSpec(config: DiscoveryConfig = {}) {
                     properties: {
                       success: { type: "boolean", example: true },
                       data: { $ref: "#/components/schemas/BundlerAnalysis" },
+                      paymentReceipt: { type: "object" }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              description: "Invalid Solana token address",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+                }
+              }
+            },
+            "402": {
+              description: "Payment Required - returns x402 payment challenge in USDC on Solana",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/PaymentRequiredResponse" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/token/mev": {
+        get: {
+          summary: "MEV Sandwich Vulnerability & Priority Gas Intelligence",
+          description: "Real-time sandwich attack telemetry, active searcher presence detection, dynamic priority fee recommendations (microLamports/CU), and slippage tolerance guardrails via query parameter. Gated by x402 ($0.002 USDC).",
+          operationId: "getMevIntelligenceByQuery",
+          tags: ["Token Intelligence"],
+          security: [{ x402: [] }],
+          "x-payment-info": {
+            price: {
+              mode: "fixed",
+              currency: "USD",
+              amount: "0.002000"
+            },
+            protocols: [{ x402: {} }]
+          },
+          parameters: [
+            {
+              name: "address",
+              in: "query",
+              required: true,
+              description: "Base58-encoded Solana SPL token mint address (e.g. 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU)",
+              schema: {
+                type: "string",
+                pattern: "^[1-9A-HJ-NP-za-km-z]{32,44}$"
+              }
+            }
+          ],
+          responses: {
+            "200": {
+              description: "Successful MEV intelligence report",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["success", "data"],
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      data: { $ref: "#/components/schemas/MevIntelligence" },
                       paymentReceipt: { type: "object" }
                     }
                   }

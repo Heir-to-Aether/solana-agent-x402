@@ -81,8 +81,11 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
   it("should declare valid x-payment-info and 402 response on all paid endpoints", () => {
     const spec = getOpenApiSpec();
     const paidRoutes = [
+      { path: "/api/token/risk", method: "get", expectedAmount: "0.002000" },
       { path: "/api/token/risk/{address}", method: "get", expectedAmount: "0.002000" },
+      { path: "/api/token/bundler", method: "get", expectedAmount: "0.003000" },
       { path: "/api/token/bundler/{address}", method: "get", expectedAmount: "0.003000" },
+      { path: "/api/token/mev", method: "get", expectedAmount: "0.002000" },
       { path: "/api/token/mev/{address}", method: "get", expectedAmount: "0.002000" },
       { path: "/api/token/full-audit", method: "post", expectedAmount: "0.005000" },
     ];
@@ -111,14 +114,26 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
   it("should define valid input schema (parameters/requestBody) and output schema on all paid endpoints", () => {
     const spec = getOpenApiSpec();
 
-    // GET endpoints must have path parameters with schema
-    const getPaths = ["/api/token/risk/{address}", "/api/token/bundler/{address}", "/api/token/mev/{address}"];
-    for (const p of getPaths) {
+    // GET endpoints with path parameters must have path parameter schema
+    const getPathParams = ["/api/token/risk/{address}", "/api/token/bundler/{address}", "/api/token/mev/{address}"];
+    for (const p of getPathParams) {
       const op = (spec.paths[p as keyof typeof spec.paths] as any).get;
       expect(op.parameters).toBeDefined();
       expect(op.parameters.length).toBeGreaterThan(0);
       expect(op.parameters[0].name).toBe("address");
       expect(op.parameters[0].in).toBe("path");
+      expect(op.parameters[0].schema.type).toBe("string");
+      expect(op.responses["200"].content["application/json"].schema).toBeDefined();
+    }
+
+    // GET endpoints with query parameters must have query parameter schema
+    const getQueryParams = ["/api/token/risk", "/api/token/bundler", "/api/token/mev"];
+    for (const p of getQueryParams) {
+      const op = (spec.paths[p as keyof typeof spec.paths] as any).get;
+      expect(op.parameters).toBeDefined();
+      expect(op.parameters.length).toBeGreaterThan(0);
+      expect(op.parameters[0].name).toBe("address");
+      expect(op.parameters[0].in).toBe("query");
       expect(op.parameters[0].schema.type).toBe("string");
       expect(op.responses["200"].content["application/json"].schema).toBeDefined();
     }
@@ -305,16 +320,19 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
     expect(result.guidanceAvailable).toBe(true);
 
     const paidEndpoints = result.endpoints.filter((e: any) => e.authMode === "paid");
-    expect(paidEndpoints.length).toBe(4);
+    expect(paidEndpoints.length).toBe(7);
 
     const freeEndpoints = result.endpoints.filter((e: any) => e.authMode === "unprotected");
-    expect(freeEndpoints.length).toBeGreaterThanOrEqual(5);
+    expect(freeEndpoints.length).toBeGreaterThanOrEqual(6);
 
-    // Verify probe checks on ALL 4 paid endpoints find paymentOptions and schemas
+    // Verify probe checks on ALL 7 paid endpoints (both base query and parameterized) find paymentOptions and schemas
     const testMint = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
     const checkEndpoints = [
+      { path: "/api/token/risk", method: "GET" },
       { path: `/api/token/risk/${testMint}`, method: "GET" },
+      { path: "/api/token/bundler", method: "GET" },
       { path: `/api/token/bundler/${testMint}`, method: "GET" },
+      { path: "/api/token/mev", method: "GET" },
       { path: `/api/token/mev/${testMint}`, method: "GET" },
       { path: `/api/token/full-audit`, method: "POST" },
     ];
@@ -329,6 +347,24 @@ describe("OpenAPI 3.1.0 Discovery & x402scan Specification", () => {
       expect(paidAdv, `Advisory for ${ep.method} ${ep.path} must exist`).toBeDefined();
       expect(paidAdv.paymentOptions.length, `Payment options for ${ep.path} must exist`).toBeGreaterThan(0);
       expect(paidAdv.protocols).toContain("x402");
+    }
+  });
+
+  it("should have zero warnings when checkEndpointSchema is executed on all base query routes", async () => {
+    const baseRoutes = [
+      `${baseUrl}/api/token/risk`,
+      `${baseUrl}/api/token/bundler`,
+      `${baseUrl}/api/token/mev`,
+    ];
+
+    for (const url of baseRoutes) {
+      const check = await checkEndpointSchema({ url, probe: false });
+      expect(check.found).toBe(true);
+      expect(check.advisories.length).toBeGreaterThan(0);
+      const paidAdv = check.advisories[0];
+      expect(paidAdv.authMode).toBe("paid");
+      expect(paidAdv.inputSchema).toBeDefined();
+      expect(paidAdv.outputSchema).toBeDefined();
     }
   });
 });

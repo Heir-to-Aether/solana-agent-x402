@@ -130,7 +130,8 @@ export function createX402Middleware(
       const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0].trim() || req.protocol || "http";
       const host = req.get("host");
       const baseUrl = (process.env.API_BASE_URL || (host ? `${proto}://${host}` : "http://localhost:4020")).replace(/\/$/, "");
-      const fullUrl = `${baseUrl}${req.originalUrl || req.path}`;
+      const normalizedReqPath = (req.path || "/").replace(/\/+/g, "/").replace(/(.+)\/+$/, "$1");
+      const fullUrl = `${baseUrl}${normalizedReqPath}`;
       const isPost = methodUpper === "POST";
 
       const acceptsEntry = {
@@ -166,6 +167,14 @@ export function createX402Middleware(
                 }
               : {
                   queryParams: {
+                    type: "object",
+                    required: ["address"],
+                    properties: {
+                      address: {
+                        type: "string",
+                        description: "Base58-encoded Solana SPL token mint address",
+                      },
+                    },
                     address: {
                       type: "string",
                       description: "Base58-encoded Solana SPL token mint address",
